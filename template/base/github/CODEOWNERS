@@ -22,6 +22,16 @@
 /.github/**                 {{SECURITY_OWNERS}}
 /tools/**                   {{SECURITY_OWNERS}}
 /eslint/**                  {{SECURITY_OWNERS}}
-/eslint.config.ts           {{SECURITY_OWNERS}}
+/eslint.config.mjs          {{SECURITY_OWNERS}}
 /biome.jsonc                {{SECURITY_OWNERS}}
 /tsconfig.json              {{SECURITY_OWNERS}}
+/knip.json                  {{SECURITY_OWNERS}}
+/.dependency-cruiser.js     {{SECURITY_OWNERS}}
+/lefthook.yml               {{SECURITY_OWNERS}}
+/.gitleaks.toml             {{SECURITY_OWNERS}}
+/commitlint.config.mjs      {{SECURITY_OWNERS}}
+/vitest.config.ts           {{SECURITY_OWNERS}}
+/playwright.config.ts       {{SECURITY_OWNERS}}
+/pnpm-workspace.yaml        {{SECURITY_OWNERS}}
+/package.json               {{SECURITY_OWNERS}}
+/.mcp.json                  {{SECURITY_OWNERS}}

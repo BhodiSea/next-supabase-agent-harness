@@ -2,7 +2,7 @@
 // Scaffolds the empty file skeleton for a vertical slice (flat repo layout).
 // Usage: node .claude/skills/authoring-vertical-slice/scripts/scaffold-slice.mjs <feature>
 // Idempotent: writes a file only when it does not already exist. Node built-ins only.
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import process from 'node:process'
 
@@ -18,17 +18,29 @@ if (!/^[a-z][a-z0-9-]*$/.test(feature)) {
 const base = process.env['CLAUDE_PROJECT_DIR'] ?? process.cwd()
 const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
 
+// Idempotency for the migration: its filename embeds a fresh timestamp each run, so an
+// existsSync check on the new name never matches. Skip if ANY migration already ends in
+// _<feature>.sql, so re-running the scaffold does not plant duplicate stub migrations.
+const migDir = join(base, 'supabase', 'migrations')
+const featureMigrationExists = existsSync(migDir)
+  ? readdirSync(migDir).some((f) => f.endsWith(`_${feature}.sql`))
+  : false
+
 const files = [
   [
     join(base, 'supabase', 'migrations', `${ts}_${feature}.sql`),
     '-- SOURCE: references/migration-rls.md\n' +
       '-- ENABLE + FORCE ROW LEVEL SECURITY; per-operation (select auth.uid()) initPlan policies.\n',
+    // Skip when a *_<feature>.sql migration already exists (idempotency across re-runs).
+    featureMigrationExists,
   ],
   [
     join(base, 'lib', 'dal', `${feature}.ts`),
     "import 'server-only'\n" +
       '// SOURCE: references/dal-dto-serveronly.md\n' +
-      '// Return narrowed DTOs; authz via getClaims()/getUser(); no service_role.\n',
+      // Avoid the literal admin-key token in the stub: the write-guard denies any later
+      // full-file Write whose content contains it, which would block editing this stub.
+      '// Return narrowed DTOs; authz via getClaims()/getUser(); no admin (RLS-bypassing) keys.\n',
   ],
   [
     join(base, 'app', feature, 'page.tsx'),
@@ -47,9 +59,9 @@ const files = [
   ],
 ]
 
-for (const [path, body] of files) {
+for (const [path, body, skip] of files) {
   mkdirSync(dirname(path), { recursive: true })
-  if (existsSync(path)) {
+  if (skip || existsSync(path)) {
     console.log('exists, skipped:', path)
     continue
   }

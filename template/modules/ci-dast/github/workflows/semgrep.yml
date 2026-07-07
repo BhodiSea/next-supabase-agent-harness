@@ -26,12 +26,14 @@ jobs:
     # Bot dependency PRs run with a read-only token and no secrets — skip rather than fail.
     if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
     # step-security/harden-runner is intentionally absent from this job: its steps execute
-    # INSIDE the semgrep container, where the host-level agent cannot install. To harden the
-    # supply chain further, pin this image by digest: semgrep/semgrep@sha256:<digest>.
+    # INSIDE the semgrep container, where the host-level agent cannot install.
+    # Image pinned by digest (Renovate maintains it) — semgrep/semgrep:latest at time of pin.
     container:
-      image: semgrep/semgrep
+      image: semgrep/semgrep@sha256:06938c1f365d3f67b8cedd8bc117607ae64253f88a0e768e9da9408548927dd6
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Semgrep CI (exit-code gate)
         run: semgrep ci

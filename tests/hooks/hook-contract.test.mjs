@@ -93,6 +93,35 @@ test('write-guard allows gate-config edits with HARNESS_ALLOW_SELF_EDIT=1', () =
   assert.ok(!denied(r), r.stdout)
 })
 
+test('write-guard protects the whole lint/architecture + permission surface', () => {
+  for (const f of [
+    'eslint.config.mjs',
+    'eslint/harness.eslint.mjs',
+    'biome.jsonc',
+    'knip.json',
+    '.dependency-cruiser.js',
+    'tsconfig.json',
+    '.mcp.json',
+    '.claude/settings.local.json',
+    'tests/rls/run-rls.mjs',
+    'tools/validate.mjs',
+  ]) {
+    const r = runHook('pretool-write-guard.mjs', { tool_input: { file_path: f, content: 'x\n' } })
+    assert.ok(denied(r), `${f} must be write-protected`)
+  }
+})
+
+test('write-guard does NOT false-positive on ordinary nested project files', () => {
+  for (const f of [
+    'app/components/knip.json', // not the root config
+    'node_modules/pkg/tools/validate.mjs', // vendored, not ours
+    'lib/features/lefthook.yml',
+  ]) {
+    const r = runHook('pretool-write-guard.mjs', { tool_input: { file_path: f, content: 'x\n' } })
+    assert.ok(!denied(r), `${f} should not be treated as harness-protected`)
+  }
+})
+
 // ── source-check ──────────────────────────────────────────────────────────────
 test('source-check blocks an uncited decision site and passes a cited one', () => {
   const uncited = join(proj, 'uncited.ts')

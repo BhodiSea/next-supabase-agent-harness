@@ -28,11 +28,15 @@ export const VALIDATE_STEPS = [
   // ['gated-routes', 'node tools/check-gated-routes.mjs'],
 ]
 
-// What the Stop hook runs before a turn may end. `pnpm validate` executes VALIDATE_STEPS
-// above; the runtime suites (RLS isolation + unit) sit outside validate so `pnpm validate`
-// stays runnable without a database.
+// What the Stop hook runs before a turn may end. These invoke the gate DIRECTLY —
+// `node tools/validate.mjs`, `node tests/rls/run-rls.mjs`, `pnpm exec vitest` — never
+// through a package.json script name. Script indirection (`pnpm validate`) would let an
+// agent redefine "validate" to `true` in package.json (an auto-accepted, unguarded edit)
+// and pass a hollow gate; direct invocation keeps the Stop gate tamper-evident, since this
+// config and those runners are all write-guard-protected.
+// SOURCE: docs/harness/README.md (tamper evidence) [corpus: harness/doctrine]
 export const STOP_HOOK_STEPS = [
-  ['validate', 'pnpm validate'],
-  ['rls-isolation', 'pnpm test:rls'],
-  ['unit', 'pnpm vitest run --silent'],
+  ['validate', 'node tools/validate.mjs'],
+  ['rls-isolation', 'node tests/rls/run-rls.mjs'],
+  ['unit', 'pnpm exec vitest run --silent'],
 ]
