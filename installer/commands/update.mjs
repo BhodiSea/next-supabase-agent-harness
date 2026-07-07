@@ -5,7 +5,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { planTree } from '../lib/copy.mjs'
-import { fileMode, installerVersion, readManifest, sha256, writeManifest } from '../lib/manifest.mjs'
+import {
+  fileMode,
+  installerVersion,
+  readManifest,
+  sha256,
+  writeManifest,
+} from '../lib/manifest.mjs'
 import { printReport } from '../lib/report.mjs'
 
 export async function update(opts) {
@@ -27,12 +33,12 @@ export async function update(opts) {
   plan.push(...planTree('stack', answers))
 
   const report = {
-    title: `harness update ${manifest.harnessVersion} → ${installerVersion()}`,
-    written: [],
-    skipped: [],
     conflicts: [],
     drift: [],
     notes: [],
+    skipped: [],
+    title: `harness update ${manifest.harnessVersion} → ${installerVersion()}`,
+    written: [],
   }
   const files = { ...manifest.files }
 
@@ -76,6 +82,14 @@ export async function update(opts) {
       continue
     }
 
+    // Local content already matches the incoming version (e.g. a fix was
+    // applied by hand before updating): just re-record, no drift.
+    if (currentSha === incomingSha) {
+      if (!opts.dryRun) files[ip] = { ...(files[ip] ?? { mode }), mode, sha256: incomingSha }
+      report.skipped.push(ip)
+      continue
+    }
+
     // Local drift on an owned file: preserve it, park the incoming version.
     if (opts.force) {
       if (!opts.dryRun) {
@@ -92,7 +106,7 @@ export async function update(opts) {
   }
 
   if (!opts.dryRun) {
-    writeManifest(targetDir, { ...manifest, harnessVersion: installerVersion(), files })
+    writeManifest(targetDir, { ...manifest, files, harnessVersion: installerVersion() })
   }
   return printReport(report, { json: opts.report === 'json' })
 }
