@@ -80,9 +80,16 @@ jobs:
       - name: Unit tests green (Stop-hook step 3)
         working-directory: ${{ runner.temp }}/boot
         run: pnpm vitest run --silent
-      - name: RLS suite self-skips green without a stack (Stop-hook step 2)
+      - name: RLS suite FAILS CLOSED in CI when migrations exist without a stack
         working-directory: ${{ runner.temp }}/boot
-        run: pnpm test:rls
+        run: |
+          # Doctrine test: with migrations present and no Supabase stack, a CI
+          # skip would be a false green — run-rls.mjs must exit nonzero.
+          # (Locally, without CI=true, the same state self-skips green.)
+          if pnpm test:rls > rls.log 2>&1; then
+            echo 'expected fail-closed, got green' >&2; cat rls.log; exit 1
+          fi
+          grep -q 'failing closed' rls.log
 
   retrofit:
     runs-on: ubuntu-latest
@@ -152,6 +159,7 @@ jobs:
       - name: Install deps
         working-directory: ${{ runner.temp }}/rt
         run: |
+          git init -b main   # lefthook's prepare script needs a git repo
           corepack enable
           corepack prepare --activate
           pnpm install --no-frozen-lockfile
