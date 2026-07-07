@@ -1,0 +1,5 @@
+node_modules/
+*.log
+.DS_Store
+# Scratch fixtures created by local selftest runs
+.fixtures/
