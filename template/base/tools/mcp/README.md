@@ -45,7 +45,10 @@ tenant A cannot read tenant B's rows before the Stop gate / CI suite runs.
   `request.jwt.claims` to tenant A, and `SELECT count(*)` of tenant B's rows, expecting 0.
 - **Never a false green:** no `SUPABASE_DB_URL`, missing `pg`, unknown identifiers, or any
   connection/query error all return `SKIPPED (<reason>)` — only a completed probe returns
-  `ISOLATED` or `LEAK`.
+  `ISOLATED` or `LEAK`. A **seeded positive control** is required: before impersonating
+  tenant A, the probe confirms (as the login role) that tenant B actually owns rows in the
+  table; zero baseline rows would make the probe vacuous (an empty or unprotected-but-empty
+  table reads as isolated), so it returns `SKIPPED`, never green.
 
 ## Security note
 

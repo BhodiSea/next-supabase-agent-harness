@@ -44,7 +44,22 @@ export async function update(opts) {
 
   for (const entry of plan) {
     const ip = entry.installPath
-    if (ip === 'package.json') continue // merged only at init; report script changes instead
+    if (ip === 'package.json') {
+      // Merged only at init — never rewritten by update. Surface what a newer
+      // template version would add or change so it isn't silently dropped.
+      try {
+        const incoming = JSON.parse(entry.content)
+        const current = JSON.parse(readFileSync(join(targetDir, 'package.json'), 'utf8'))
+        for (const [name, cmd] of Object.entries(incoming.scripts ?? {})) {
+          const existing = current.scripts?.[name] ?? current.scripts?.[`harness:${name}`]
+          if (existing === undefined) report.notes.push(`new template script not installed: "${name}": ${JSON.stringify(cmd)} — add it manually`)
+          else if (existing !== cmd) report.notes.push(`template script "${name}" changed upstream to ${JSON.stringify(cmd)} (yours kept)`)
+        }
+      } catch {
+        report.notes.push('could not compare package.json scripts against the template')
+      }
+      continue
+    }
     const dest = join(targetDir, ip)
     const recorded = manifest.files?.[ip]
     const mode = recorded?.mode ?? fileMode(ip)

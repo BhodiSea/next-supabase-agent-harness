@@ -6,9 +6,16 @@
 //    installer's placeholder registry, and every registry var must be used.
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const ROOT = new URL('..', import.meta.url).pathname
+const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const TEMPLATE = join(ROOT, 'template')
+
+// A gate that scans nothing is a false green — fail loudly, never skip.
+if (!existsSync(TEMPLATE)) {
+  console.error(`HYGIENE: FAIL — template dir not found at ${TEMPLATE}`)
+  process.exit(1)
+}
 
 const LEAK_PATTERNS = [
   /cogvera/i,
@@ -21,6 +28,13 @@ const LEAK_PATTERNS = [
   /\/Users\//, // absolute developer paths
   /[a-z]{20}\.supabase\.co/, // real Supabase project hosts
   /@cogveralabs/i,
+  // Credential shapes — none may ever ship, even as "examples". Real Supabase
+  // service-role/anon keys are JWTs, so the JWT pattern covers them too.
+  /eyJ[A-Za-z0-9_-]{20,}\.eyJ/, // JWT structure (header.payload)
+  /sbp_[A-Za-z0-9]{20,}/, // Supabase personal access tokens
+  /sb_secret_[A-Za-z0-9]/, // Supabase secret API keys
+  // Connection strings with credentials, except the documented local-dev default:
+  /postgres(?:ql)?:\/\/(?!postgres:postgres@127\.0\.0\.1)[^\s'"]+:[^\s'"]+@/,
 ]
 
 // Files allowed to mention a pattern (path suffix → patterns allowed there).

@@ -31,6 +31,18 @@ async function runProbe(client, { table, tenantColumn, tenantA, tenantB }) {
     if (!(await assertKnownColumn(client, table, tenantColumn))) {
       return `RLS: SKIPPED (unknown identifier: public.${table}.${tenantColumn} is not in information_schema.columns — refusing to build SQL from it)`
     }
+    // Positive control BEFORE dropping privileges: as the (often policy-exempt) login role,
+    // confirm tenantB actually owns rows here. Without this, an empty table or a mistyped
+    // tenant id would make the probe vacuous and report ISOLATED even with RLS disabled —
+    // a false green. Zero baseline rows → SKIPPED, never green.
+    // SOURCE: docs/harness/README.md (mid-turn RLS probe) [corpus: harness/doctrine]
+    const baseline = await client.query(
+      `SELECT count(*)::int AS n FROM ${quoteIdent(table)} WHERE ${quoteIdent(tenantColumn)} = $1`,
+      [tenantB],
+    )
+    if (baseline.rows[0].n === 0) {
+      return `RLS: SKIPPED (vacuous probe: ${tenantB} owns no rows in ${table} — seed at least one row for tenantB, or pass a tenant id that owns data)`
+    }
     // Row security policies apply to the current role; probe as the RLS-subject role the app
     // uses, never the connection's (often policy-exempt) login role.
     // SOURCE: policies restrict what a role's commands can return [corpus: postgresql/row-security]
@@ -86,7 +98,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
       description:
-        'Probe cross-tenant RLS isolation for a table: as tenantA, assert 0 rows of tenantB are visible. Returns RLS: ISOLATED / RLS: LEAK / SKIPPED. Read-only, always rolled back. The CI suite (pnpm test:rls) is authoritative.',
+        'Probe cross-tenant RLS isolation for a table: as tenantA, assert 0 rows of tenantB are visible. tenantB must already own at least one row (seeded positive control) or the probe returns SKIPPED — a vacuous probe is never reported green. Returns RLS: ISOLATED / RLS: LEAK / SKIPPED. Read-only, always rolled back. The CI suite (pnpm test:rls) is authoritative.',
       inputSchema: {
         properties: {
           table: { type: 'string' },

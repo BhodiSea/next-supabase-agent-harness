@@ -78,7 +78,7 @@ export async function init(opts) {
       const conflictable = CONFLICTABLE.find((c) => c.installed === ip)
       if (conflictable && existsSync(dest) && readFileSync(dest, 'utf8') !== entry.content) {
         const sibling = ip.replace(/(\.[a-z]+)$/, '.harness$1')
-        write(join(targetDir, sibling), entry.content)
+        if (!opts.dryRun) write(join(targetDir, sibling), entry.content)
         report.conflicts.push({ path: ip, detail: `existing config kept; harness version at ${sibling} — merge manually` })
         report.written.push(sibling)
         continue

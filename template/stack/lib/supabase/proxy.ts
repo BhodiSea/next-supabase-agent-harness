@@ -65,7 +65,11 @@ export async function updateSession(request: NextRequest) {
   // (CVE-2025-29927) — real authorization lives in the DAL and RLS, close to the data.
   // SOURCE: https://vercel.com/changelog/cve-2025-29927 [corpus: nextjs@16/proxy-cve-2025-29927]
   const { pathname } = request.nextUrl
-  const isPublic = pathname === '/' || PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  // Segment-boundary match: '/auth' must cover '/auth' and '/auth/*' but never
+  // '/authors' — a bare startsWith would silently make such routes public.
+  const isPublic =
+    pathname === '/' ||
+    PUBLIC_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
 
   if (!user && !isPublic) {
     // no user, potentially respond by redirecting the user to the login page
