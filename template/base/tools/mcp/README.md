@@ -30,7 +30,11 @@ Append an object to `tools/mcp/corpus/index.json`:
 - Internal authorities use your project namespace (e.g. `{{PROJECT_SLUG}}/security`) with a
   repo-relative `url`.
 - Verify with `corpus_resolve` before citing the id in a `// SOURCE:` comment.
-- Teams may host a shared index and point every checkout at it via `CORPUS_INDEX_URL`.
+- `CORPUS_INDEX_URL` overrides the backing store with a corpus JSON **file path** (e.g. a
+  shared checkout or a mounted path) — it is not an HTTP fetch. The server treats it as a
+  path (stripping a `file://` prefix), ignores an `http(s)://` value or an unexpanded
+  `${...}` placeholder, and falls back to the local `corpus/index.json` if the override
+  points nowhere — so a bad override never silently blanks the corpus.
 
 ## `rls_verify` (`rls-verify-server.mjs`)
 

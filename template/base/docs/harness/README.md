@@ -44,7 +44,7 @@ Exit-code semantics (the crux of the whole design):
 |---|---|---|---|
 | PreToolUse | `Bash` | `.claude/hooks/pretool-bash-guard.mjs` | denies destructive shell (`rm -rf`, force-push, hard reset), `.env` reads, service-role key references in commands, destructive raw SQL, fork bombs |
 | PreToolUse | `Edit\|Write\|MultiEdit` | `.claude/hooks/pretool-write-guard.mjs` | blocks invariant-violating file **content** before it lands (see "security invariants" below) and denies edits to harness-owned paths (see "tamper evidence") |
-| PostToolUse | `Edit\|Write\|MultiEdit` | `.claude/hooks/posttool-fast-check.mjs` | fast per-file feedback: format + targeted typecheck on the file just written, so errors surface immediately instead of at turn end |
+| PostToolUse | `Edit\|Write\|MultiEdit` | `.claude/hooks/posttool-fast-check.mjs` | fast per-file feedback: **Biome only** (`biome check --write` on the single changed file), non-blocking. The heavy checks (`tsc`, `eslint`, `build`) are deliberately deferred to the Stop gate so the edit loop stays tight |
 | PostToolUse | `Edit\|Write\|MultiEdit` | `.claude/hooks/posttool-source-check.mjs` | flags non-trivial decision sites that lack an inline `// SOURCE:` citation (exit 2) |
 | Stop | — | `.claude/hooks/stop-validate-gate.mjs` | runs the full gate (`pnpm validate` + `pnpm test:rls` + the unit suite); exits 2 with failures on stderr until everything is green |
 
@@ -167,8 +167,12 @@ session. The spec is necessary but not sufficient; the gate holds the line eithe
 
 ## Adversarial review
 
-Reviewer subagents run with `tools: Read, Grep, Glob` **only** — they cannot write files
-or run shell, so a prompt-injected reviewer cannot become a writer.
+Reviewer subagents are **read-only by construction** — they cannot write files or run
+shell, so a prompt-injected reviewer cannot become a writer. Most run with
+`tools: Read, Grep, Glob` only; the single exception is `citation-verifier`, which
+additionally holds `WebFetch` (restricted to an allow-list of documentation domains) and
+`mcp__corpus_search` — it must fetch external URLs and resolve `[corpus: <id>]` references
+to check the citations, but still has no write or shell tool.
 
 - `security-reviewer` — **must** run on any change to RLS, the DAL, `proxy.ts`, or a
   `'use cache'` boundary.
@@ -262,3 +266,145 @@ deployed Deno, not Next.js app code — and only under all of the following, tog
 
 Anything that does not meet all five conditions is a violation of the invariant, not a
 second exception.
+
+## Mechanisms reference
+
+The remaining `// SOURCE: docs/harness/README.md (<topic>)` citations in the shipped code
+resolve against the mechanisms below. Each entry names the file that implements it — read
+that file for the ground truth; the prose here is the *why*.
+
+### Grounding rules (`.claude/rules/`)
+
+- **rsc-client-split rule** (`.claude/rules/rsc-client-split.md`) — the **rsc-client-split**
+  convention: Server Components by default; a client component (a `'use client'` file or a
+  `*.client.tsx`) must never import the DAL (`lib/dal/**`). Its `paths:` scoping is
+  documented as unreliable, so the rule is best-effort context — the hard wall is the write
+  guard plus the ESLint boundaries and `dependency-cruiser.js`. It also restates the Cache
+  Components constraint (see below): read runtime values outside a cached scope and pass
+  tenant/user IDs in.
+- **security-invariants rule** (`.claude/rules/security-invariants.md`) — the always-loaded
+  rule file that restates the six non-negotiables verbatim for the model: no server-side
+  `getSession()`, no service-role key, no `dangerouslySetInnerHTML`, DAL is server-only,
+  `proxy.ts` is never the authz boundary, and RLS uses `ENABLE` + `FORCE`. Advisory
+  duplication of the hook/lint enforcement so the model rarely trips a gate.
+
+### Cache Components and the stack config
+
+- **cacheComponents: true** (`next.config.ts`) — the stack's `next.config.ts` sets
+  `cacheComponents: true`, enabling Next 16 Cache Components / PPR: static shells prerender
+  and runtime request data must be read inside Suspense or a `'use cache'` boundary with
+  explicit args. This is exactly why the `next build` step in the gate catches prerender
+  violations that static analysis cannot see — a runtime read in a cached scope only fails
+  at build.
+
+### Supabase clients and the proxy
+
+- **auth redirect contract** (`lib/supabase/proxy.ts`) — `updateSession` runs an
+  **optimistic** session-presence redirect: a request that is not under a `PUBLIC_PREFIXES`
+  entry (matched on segment boundaries — `/auth` covers `/auth` and `/auth/*` but never
+  `/authors`) and carries no verified claims is redirected to `/auth/login`. Claims come
+  from `getClaims()` (verified JWT), never the cookie session, and the proxy is **never**
+  the authorization boundary (CVE-2025-29927) — real authorization lives in the DAL and RLS.
+- **anon-granted RPCs + RLS-public rows are the public read surface** (`lib/supabase/anon.ts`)
+  — `createAnonClient()` is a cookie-FREE Supabase client for public reads inside a
+  `'use cache'` boundary, where there is **no cookies()**/`headers()` access (the
+  cookie-based server client would throw). Running as the anon role is also the correct
+  trust model for a public page: the reachable data is exactly the public read surface —
+  definer RPCs granted to `anon` plus RLS-public rows — and nothing else. No session is
+  persisted (server, per call).
+
+### Generated types
+
+- **generated types are the typed contract; drift = stale schema view**
+  (`lib/supabase/database.types.ts`, `tools/check-types-drift.mjs`) — `database.types.ts`
+  is produced by `supabase gen types typescript --local --schema public` and is the single
+  typed contract the app and tests share. A diff between it and the live schema is a stale
+  schema view (a migration landed without regenerating). `pnpm check:types:drift`
+  regenerates from the running local stack and fails on any mismatch, self-skipping only
+  when no stack is reachable.
+- **generated types exemption** (`eslint.config`, `biome.jsonc`, `knip.json`) — because the
+  file is machine-generated, it is exempt from Biome, ESLint, and formatting so its upstream
+  generator style is preserved byte-for-byte (drift detection must compare against exactly
+  what the CLI emits); knip ignores it too.
+
+### RLS isolation harness (`tests/rls/`)
+
+- **user-scoped isolation targets** (`tests/rls/client-factory.ts`) — `ISOLATION_TARGETS`
+  is the list that drives the SDK cross-tenant suite. Each target is
+  `{ table, ownerColumn, insertProbe, updateProbe?, appendOnly? }` describing one
+  owner-scoped table; add one entry per user-owned table as the schema grows and the suite
+  probes every entry (SELECT/INSERT/UPDATE/DELETE) for cross-user leakage.
+- **RLS test-suite service-role carve-out** (`tests/rls/**`, ESLint
+  `harness/rls-no-secrets-off`) — `tests/rls/**` is the ONE place the service-role key is
+  read, and only dynamically by name from `process.env`, to seed fixtures for a non-vacuous
+  positive control. A razor-scoped ESLint override disables the `no-secrets` entropy rule
+  for that path only; the key never appears in app code, and the admin client seeds
+  fixtures, never asserts isolation.
+
+### Route-boundary gates (`tools/check-route-boundaries.mjs`)
+
+- **route-boundary coverage; missing restricted/zero states** — the gate requires every
+  route family (the app root, each route-group root `app/(x)/`, and each top-level
+  UI-owning segment) to ship both `error.tsx` and `not-found.tsx`, so a thrown Server
+  Component or `notFound()` lands on a designed restricted/zero state instead of Next's
+  unstyled crash. Nearest-boundary semantics: one pair per family, not per leaf.
+- **record-segment boundary gate** — `RECORD_TREES` (empty by default) additionally forces
+  every dynamic `[id]` segment under a listed tree to ship its OWN `error.tsx` +
+  `not-found.tsx`, because a shared record link must land on a segment-owned "back to list"
+  state rather than the app-level catch-all two layouts up.
+
+### Statusline
+
+- **statusline surfaces gate state** (`.claude/statusline.mjs`) — the custom statusline
+  renders `model | branch±dirty | gate: pnpm validate`: the active model, the git branch
+  with a `±N` dirty-file count, and the gate command as a standing reminder (a live
+  `pnpm validate` per render would be too slow).
+
+### Security-testing layer (CI)
+
+- **secret scanning** / **secret scanning, pre-commit + CI** (`lefthook.yml`,
+  `.github/workflows/gitleaks.yml`) — gitleaks runs in two places: pre-commit via lefthook
+  (`gitleaks protect --staged`, self-skipping when the binary is absent) and in CI over full
+  history (`fetch-depth: 0`). `.gitleaks.toml` scopes the allowlist; the pre-commit pass is
+  the fast net, CI is the authority.
+- **SAST as part of the security-testing layer** (`.github/workflows/codeql.yml`; semgrep in
+  the `ci-dast` module) — static analysis is CodeQL with the `security-extended` query pack
+  (default-on, diff-aware on PR + full nightly) plus, once `ci-dast` is enabled, semgrep over
+  `p/security-audit` + `p/secrets` + `p/owasp-top-ten` (the OWASP Top 10 mapping). The same
+  module also ships an OWASP ZAP baseline DAST against a deployed staging target.
+
+### a11y lint recalibration
+
+- **a11y scrollable-region lint recalibration** (ESLint `harness/a11y-scrollable-region`) —
+  a single-rule override that recalibrates jsx-a11y's strict `no-noninteractive-tabindex`,
+  whose default forbids `tabindex` on a non-interactive element and would leave a scrollable
+  data region keyboard-unreachable. The block allows a named `role="region"` / `<section>`
+  + `tabindex="0"` scroll region, per the W3C ACT scrollable-region rule.
+
+### Human review
+
+- **mandatory human review** — and its longer form, the
+  **pre-merge human-review checklist; test-evidence over assertion**
+  (`.github/pull_request_template.md`, `.github/CODEOWNERS`) — the PR template
+  makes evidence mandatory: it requires the REAL pasted output of `pnpm validate` (and
+  `pnpm test:rls` for RLS/DAL/tenant changes, showing fail-closed isolation), a
+  prove-don't-claim / test-evidence-over-assertion contract, plus a security checklist.
+  CODEOWNERS requires sign-off from the security owners on the auth/data surfaces and the
+  harness's own paths, so even an evident tamper needs a human accomplice to land.
+
+### Agent tooling
+
+- **writing tools for agents; corpus grounding** (`tools/mcp/`) — the two local stdio MCP
+  servers ground the agent mid-turn: `corpus_search` (over the version-pinned corpus at
+  `tools/mcp/corpus/index.json`) resolves `[corpus: <id>]` references with no network, and
+  `rls_verify` probes cross-tenant isolation inside a read-only, always-rolled-back
+  transaction. Both return an honest `NO_MATCH` / `SKIPPED` rather than a fabricated result.
+
+### The Stop gate and the CI floor
+
+- **the Stop gate defines done; CI floor** — restated for completeness: the Stop hook runs
+  `STOP_HOOK_STEPS` directly (`node tools/validate.mjs` plus the RLS and unit suites), so
+  the Stop gate defines done locally; CI re-runs the same chain via
+  `node tools/validate.mjs --min-floor`, so a locally weakened config cannot weaken the CI
+  floor. See "The validate contract" and "Tamper evidence (honest limits)" above for the
+  full treatment.

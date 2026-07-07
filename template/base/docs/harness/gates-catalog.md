@@ -24,11 +24,32 @@ the floor, hooks are the fast path.
 | rls (Stop hook + CI) | `pnpm test:rls` | cross-tenant isolation: the pgTAP/isolation suite proving RLS policies actually deny; self-skips before a schema exists |
 | unit (Stop hook + CI) | `pnpm vitest run --silent` | the behavioral net, including the manifest-driven tests described below |
 
+### CI-runtime gates (`quality-gate.yml`)
+
+The validate chain above runs on every turn-end (Stop hook) and every PR (CI). CI's
+`quality-gate.yml` also carries a `runtime` job with gates that need a live database or a
+browser and therefore cannot run in the always-on validate chain. These are default-on in
+CI; locally, the Stop hook covers `validate` + `rls` + `unit`, and the rest run in CI.
+
+| Gate | Command | Runs | What it catches |
+|---|---|---|---|
+| generated-types drift | `pnpm check:types:drift` | CI runtime job, only when `supabase/migrations/**` exists | `lib/supabase/database.types.ts` is stale vs the live schema (a migration landed without regenerating types) |
+| migration apply-integrity | `pnpm test:migrations` | CI runtime job, only when `supabase/migrations/**` exists | a migration that does not apply cleanly from a clean database |
+| RLS isolation | `pnpm test:rls` | Stop hook + CI runtime job (self-skips before a schema/stack exists) | cross-tenant leakage — the pgTAP/SDK isolation suite proving RLS fail-closed |
+| a11y | `pnpm test:a11y` | CI runtime job (Playwright + axe-core) | WCAG 2.2 AA regressions on key routes |
+
+The runtime job starts a local Supabase stack only when `supabase/migrations/**` is
+present; before then, the DB-dependent gates self-skip honestly rather than false-green.
+
 ## Opt-in modules
 
-Enable a module by uncommenting its entry in `tools/harness.config.mjs`, or run
-`npx next-supabase-agent-harness enable <module>` which does the same plus copies any
-module files into place.
+`npx next-supabase-agent-harness enable <module>` copies the module's files into place and
+records it in `.harness/manifest.json`. It does **not** uncomment any gate step. The two
+validate-chain gate modules (`gate-styleguide`, `gate-gated-routes`) need one more step:
+uncomment their entry in `tools/harness.config.mjs` — which is write-guard-protected, so a
+human sets `HARNESS_ALLOW_SELF_EDIT=1` or edits it outside an agent session (the installer
+prints this hint on enable). The remaining modules (`mutation`, `ci-*`) are pure file-drops
+— a workflow or config that is live the moment it lands, with nothing to uncomment.
 
 | Module | What it adds | Why it is not default-on |
 |---|---|---|
@@ -36,7 +57,7 @@ module files into place.
 | `gate-gated-routes` | `tools/check-gated-routes.mjs` + `tools/gated-routes-manifest.mjs`: every role-gated page/layout must appear in the manifest, render a designed restricted state, and never `notFound()` on a role check | keyed to your project's role-gate call names (e.g. `hasAnyRole(`), which don't exist until you write them |
 | `mutation` | StrykerJS: a nightly full run (`stryker.config.mjs`) plus a per-PR incremental gate (`stryker.incremental.mjs`) narrowed to critical modules | mutation runs are minutes-to-hours; only pays off once there is money/authz logic worth mutating (see the worked example) |
 | `ci-provenance` | SLSA build provenance (`actions/attest-build-provenance`, Build L2 out of the box) + CycloneDX/SPDX SBOM attestation in CI | only meaningful once you publish/deploy artifacts a downstream consumer verifies |
-| `ci-dast` | a scheduled OWASP ZAP baseline scan against a deployed preview URL | needs a deployed target; noisy before the app has stable routes |
+| `ci-dast` | two workflows: `semgrep.yml` (SAST — `p/security-audit` + `p/secrets` + `p/owasp-top-ten`, diff-aware on PR + nightly, exit-code gated) and `zap-baseline.yml` (DAST — a scheduled OWASP ZAP baseline scan against a deployed staging target) | the DAST half needs a deployed target and is noisy before the app has stable routes; the SAST half overlaps the default-on CodeQL |
 | `ci-lighthouse` | Lighthouse CI performance/a11y budgets on key routes | budgets are project-specific; a default budget is either vacuous or wrong |
 
 ## Patterns worth rebuilding in your project
