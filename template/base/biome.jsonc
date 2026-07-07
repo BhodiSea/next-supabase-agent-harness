@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.2/schema.json",
   "assist": {
     "actions": { "source": { "organizeImports": "on", "useSortedKeys": "on" } },
     "enabled": true
@@ -14,7 +14,8 @@
   // upstream style (double quotes) is preserved and a `gen types --check` drift compare stays clean.
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!docs", "!lib/supabase/database.types.ts"]
+    // .harness/ is machine-generated installer state (like a lockfile) — never style-policed.
+    "includes": ["**", "!docs", "!lib/supabase/database.types.ts", "!.harness"]
   },
   "formatter": {
     "enabled": true,

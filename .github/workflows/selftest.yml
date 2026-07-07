@@ -70,6 +70,7 @@ jobs:
       - name: Enable corepack + install
         working-directory: ${{ runner.temp }}/boot
         run: |
+          git init -b main   # lefthook's prepare script needs a git repo
           corepack enable
           corepack prepare --activate
           pnpm install --no-frozen-lockfile

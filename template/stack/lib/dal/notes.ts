@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 // with getClaims() — never the unverified cookie session — before touching data, and let RLS on
 // `notes` act as the second, fail-closed layer. Server-only module; returns DTOs, never raw rows.
 // SOURCE: https://supabase.com/docs/reference/javascript/auth-getclaims [corpus: supabase/getclaims]
+/** @public consumed by RSC pages and the unit-test contract */
 export interface NoteDTO {
   id: string
   title: string
@@ -14,6 +15,7 @@ export interface NoteDTO {
 
 // Pure row -> DTO mapper: strips storage-shaped fields (user_id, body, created_at) so callers see
 // only the read-model contract. Must not mutate its input (unit-tested).
+/** @public exported for the unit-test purity contract */
 export function toNoteDTO(row: Tables<'notes'>): NoteDTO {
   return { id: row.id, title: row.title, updatedAt: row.updated_at }
 }
