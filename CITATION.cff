@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: >-
+  If you use this harness in research on AI-assisted software engineering,
+  deterministic agent guardrails, or provenance-verified code generation,
+  please cite it as below.
+type: software
+title: next-supabase-agent-harness
+abstract: >-
+  A deterministic agent harness for Next.js 16 + Supabase projects: Claude
+  Code hooks that gate turn completion on a green validation chain,
+  security-invariant lint rules, row-level-security isolation tests, an
+  inline-citation provenance pipeline verified against a pinned corpus, and
+  supply-chain-hardened CI.
+authors:
+  - name: Cogvera Labs
+repository-code: 'https://github.com/BhodiSea/next-supabase-agent-harness'
+license: Apache-2.0

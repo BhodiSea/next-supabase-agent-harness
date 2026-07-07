@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "{{PROJECT_NAME}}"
+authors:
+  - name: "{{GITHUB_OWNER}}"
+abstract: >-
+  {{PROJECT_NAME}}. Scaffolded with next-supabase-agent-harness, an agent-harness
+  template for Next.js 16 + Supabase + TypeScript-strict projects (six-layer model:
+  grounding, generation, in-loop verification, provenance capture, adversarial
+  review, gated completion). See docs/harness/README.md for the harness doctrine.

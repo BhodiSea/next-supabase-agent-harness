@@ -1,0 +1,27 @@
+{
+  "_readme": [
+    "Personal, git-ignored overrides. Copy this file to .claude/settings.local.json and fill in the env values.",
+    "SUPABASE_PROJECT_REF + SUPABASE_ACCESS_TOKEN scope the Supabase MCP server and CLI to YOUR project.",
+    "SUPABASE_DB_URL is for the LOCAL Supabase stack ONLY (started via `supabase start`). Never point it at a hosted database — the default below is the local-stack Postgres on port 54322.",
+    "CORPUS_INDEX_URL optionally points the corpus_search MCP server at a remote citation index; leave it empty to use the checked-in corpus index.",
+    "permissions.allow below adds personal conveniences (installs, commits, local Supabase lifecycle) on top of the shared settings.json allowlist."
+  ],
+  "env": {
+    "SUPABASE_PROJECT_REF": "",
+    "SUPABASE_ACCESS_TOKEN": "",
+    "SUPABASE_DB_URL": "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+    "CORPUS_INDEX_URL": ""
+  },
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install *)",
+      "Bash(pnpm add *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git stash *)",
+      "Bash(supabase start)",
+      "Bash(supabase stop *)",
+      "Bash(supabase status *)"
+    ]
+  }
+}

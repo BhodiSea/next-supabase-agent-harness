@@ -1,0 +1,44 @@
+# Git hooks via lefthook (single Go binary; replaces husky + lint-staged).
+# Fast deterministic checks at pre-commit (staged files only); slower type-aware
+# checks at pre-push (whole repo); CI re-runs everything as the authority.
+# SOURCE: docs/harness/README.md (code quality enforcement)
+# NOT parallel and ordered by priority: Prettier (Tailwind class sort) runs FIRST,
+# Biome runs LAST and is authoritative for formatting. Running them in parallel let
+# Prettier's defaults (double quotes/semicolons) re-stage over Biome and commit files
+# that then fail `biome check` in CI. Biome-last + matched .prettierrc keeps them consistent.
+pre-commit:
+  parallel: false
+  commands:
+    tailwind:
+      priority: 1
+      glob: "*.tsx"
+      run: pnpm exec prettier --write {staged_files}
+      stage_fixed: true
+    biome:
+      priority: 2
+      glob: "*.{js,ts,jsx,tsx,json,jsonc,css}"
+      run: pnpm exec biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {staged_files}
+      stage_fixed: true
+    # Secret scan on staged changes — fail the commit if a secret is staged. Self-skips when the
+    # gitleaks binary is absent (CI is the authority); install: `brew install gitleaks`.
+    # SOURCE: docs/harness/README.md (secret scanning, pre-commit + CI)
+    gitleaks:
+      priority: 3
+      run: if command -v gitleaks >/dev/null 2>&1; then gitleaks protect --staged --no-banner --redact --config .gitleaks.toml; else echo "gitleaks not installed — skipping (CI enforces)"; fi
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}
+
+pre-push:
+  parallel: true
+  commands:
+    typecheck:
+      run: pnpm typecheck
+    eslint:
+      run: pnpm lint
+    knip:
+      run: pnpm exec knip --strict
+    spell:
+      run: pnpm exec cspell --no-progress --gitignore "**/*.{md,ts,tsx,mjs}"

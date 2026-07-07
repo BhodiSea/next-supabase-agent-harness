@@ -1,0 +1,22 @@
+# gitleaks config — extends the default ruleset. gitleaks matches secret VALUES (high entropy),
+# not env-var NAMES, so the only legitimate allowlist entries are the few config/doc files that
+# embed the service-role key NAME or a clearly-fake CI placeholder. Deliberately NARROW: no global
+# value-regex allowlist and no whole-directory allowlist, so a real secret can never be masked
+# repo-wide. SOURCE: docs/harness/README.md (secret scanning); eslint.config.ts harness/server-invariants
+title = "{{PROJECT_SLUG}} gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Narrow, file-scoped false positives — these embed key NAMES or a fake CI placeholder, never a real secret value."
+paths = [
+  # AST selector strings that name the prohibited service-role key (a lint rule, not a secret).
+  '''eslint\.config\.ts''',
+  # Prose that documents the key invariants conceptually.
+  '''docs/harness/README\.md''',
+  # Fake non-secret publishable placeholder used to let the public shell build in CI.
+  '''\.github/workflows/lighthouse\.yml''',
+  # Self-reference so this config's own example strings don't match.
+  '''\.gitleaks\.toml''',
+]

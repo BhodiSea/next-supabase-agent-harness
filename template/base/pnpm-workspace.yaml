@@ -1,0 +1,13 @@
+# pnpm 11 supply-chain settings.
+# SOURCE: docs/harness/README.md (supply-chain hardening)
+packages:
+  - '.'
+
+# Cooldown before newly-published package versions may be installed,
+# in minutes: 4320 minutes = 3 days (rides out most compromised-release windows).
+minimumReleaseAge: 4320
+
+# Lifecycle build scripts are blocked by default in pnpm; allow only these.
+onlyBuiltDependencies:
+  - lefthook
+  - '@biomejs/biome'

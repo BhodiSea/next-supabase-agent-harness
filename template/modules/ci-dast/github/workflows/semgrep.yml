@@ -1,0 +1,42 @@
+# Semgrep SAST — p/security-audit + p/secrets + p/owasp-top-ten. `semgrep ci` exit code gates the
+# PR (blocking findings fail the job); diff-aware on PR, full nightly. SARIF/Security-tab upload is
+# an optional enhancement once GitHub Advanced Security is enabled (repo setting).
+# SOURCE: docs/harness/README.md (SAST; OWASP Top 10 mapping)
+name: semgrep
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Full nightly scan. 03:37 UTC.
+    - cron: "37 3 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: semgrep-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    name: semgrep (security-audit + secrets + owasp-top-ten)
+    runs-on: ubuntu-latest
+    # Bot dependency PRs run with a read-only token and no secrets — skip rather than fail.
+    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    # step-security/harden-runner is intentionally absent from this job: its steps execute
+    # INSIDE the semgrep container, where the host-level agent cannot install. To harden the
+    # supply chain further, pin this image by digest: semgrep/semgrep@sha256:<digest>.
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Semgrep CI (exit-code gate)
+        run: semgrep ci
+        env:
+          SEMGREP_RULES: >-
+            p/security-audit
+            p/secrets
+            p/owasp-top-ten

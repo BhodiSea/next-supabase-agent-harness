@@ -1,0 +1,33 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "proxy.ts",
+    "app/**/{page,layout,route,template,loading,error,not-found,global-error,default}.{ts,tsx}",
+    "components/ui/**/*.{ts,tsx}!",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "stryker.config.mjs",
+    "tests/**/*.test.ts",
+    "tests/rls/client-factory.ts",
+    "tests/rls/run-rls.mjs",
+    "e2e/**/*.spec.ts",
+    "e2e/**/*.setup.ts",
+    "tests/a11y/run-a11y.mjs",
+    "tests/setup/*.ts"
+  ],
+  "ignore": ["next-env.d.ts", "lib/supabase/database.types.ts"],
+  "ignoreDependencies": [
+    "@modelcontextprotocol/sdk",
+    "@tailwindcss/postcss",
+    "pg",
+    "tailwindcss"
+  ],
+  "paths": { "@/*": ["./*"] },
+  "project": [
+    "app/**/*.{ts,tsx}!",
+    "components/**/*.{ts,tsx}!",
+    "lib/**/*.{ts,tsx}!",
+    "tests/**/*.{ts,tsx}!",
+    "e2e/**/*.ts!"
+  ]
+}

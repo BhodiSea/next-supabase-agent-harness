@@ -1,0 +1,13 @@
+{
+  "name": "next-supabase-agent-harness",
+  "owner": {
+    "name": "BhodiSea"
+  },
+  "plugins": [
+    {
+      "name": "next-supabase-agent-harness",
+      "source": ".",
+      "description": "Agent half of the harness: migration/RLS, DAL, and test authors; security, Torvalds-grade, and accessibility reviewers; citation verifier; /adr, /new-feature, /verify-citations; the vertical-slice skill."
+    }
+  ]
+}

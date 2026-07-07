@@ -1,0 +1,6 @@
+# SOURCE: docs/harness/README.md (deterministic line endings — LF across team + CI)
+* text=auto eol=lf
+
+# Lockfile + generated artifacts: treat as generated in diffs.
+pnpm-lock.yaml linguist-generated=true -diff
+*.lockb binary

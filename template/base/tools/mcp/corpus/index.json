@@ -1,0 +1,218 @@
+[
+  {
+    "id": "nextjs@16/proxy-cve-2025-29927",
+    "sha256": "",
+    "text": "The x-middleware-subrequest header is spoofable (CVE-2025-29927). Do optimistic session-presence checks in proxy.ts only; perform authorization in the DAL, close to the data.",
+    "title": "proxy.ts is not an authorization boundary (post-CVE-2025-29927)",
+    "url": "https://nextjs.org/docs/app/building-your-application/authentication",
+    "version": "16"
+  },
+  {
+    "id": "supabase/rls-initplan",
+    "sha256": "",
+    "text": "Wrapping an auth function as (select auth.uid()) causes Postgres to run an initPlan and cache the result per-statement rather than per-row (over 100x on large tables). Every exposed table gets ENABLE + FORCE ROW LEVEL SECURITY.",
+    "title": "RLS performance: wrap auth.uid() in (select ...) for an initPlan; FORCE ROW LEVEL SECURITY",
+    "url": "https://supabase.com/docs/guides/database/postgres/row-level-security",
+    "version": "2026-06"
+  },
+  {
+    "id": "supabase/getclaims",
+    "sha256": "",
+    "text": "getClaims() verifies the JWT against the project JWKS (usually locally for asymmetric keys). getSession() reads values directly from storage (cookies) which may not be authentic; it is insecure on the server.",
+    "title": "getClaims() verifies the JWT; getSession() is unverified server-side",
+    "url": "https://supabase.com/docs/reference/javascript/auth-getclaims",
+    "version": "2026-06"
+  },
+  {
+    "id": "nextjs@16/use-cache-runtime-apis",
+    "sha256": "",
+    "text": "Inside a 'use cache' boundary you cannot access runtime APIs such as cookies(), headers(), or searchParams. Read these values outside the cached scope and pass them in as explicit arguments so tenant/user IDs join the cache key.",
+    "title": "Cached functions cannot read cookies()/headers()/searchParams",
+    "url": "https://nextjs.org/docs/app/api-reference/directives/use-cache",
+    "version": "16"
+  },
+  {
+    "id": "nextjs@16/revalidate-path",
+    "sha256": "",
+    "text": "revalidatePath purges the cached data for a route after a mutation so the next request renders fresh data (read-your-writes). Call it from a Server Action or Route Handler after a write; pair with revalidateTag for tag-scoped invalidation.",
+    "title": "revalidatePath / revalidateTag: invalidate cached routes after a write",
+    "url": "https://nextjs.org/docs/app/api-reference/functions/revalidatePath",
+    "version": "16"
+  },
+  {
+    "id": "nextjs@16/redirect",
+    "sha256": "",
+    "text": "redirect() throws a special error to short-circuit rendering and send the user elsewhere; in Server Components/Actions use it after an authz check fails. It must be called outside try/catch that swallows the control-flow error.",
+    "title": "redirect() control-flow in Server Components and Actions",
+    "url": "https://nextjs.org/docs/app/api-reference/functions/redirect",
+    "version": "16"
+  },
+  {
+    "id": "postgresql/row-security",
+    "sha256": "",
+    "text": "Row security policies restrict which rows a command can return or modify. FORCE ROW LEVEL SECURITY also applies policies to the table owner. Policies are per-command (SELECT/INSERT/UPDATE/DELETE); USING filters reads, WITH CHECK validates writes.",
+    "title": "PostgreSQL row security policies; FORCE ROW LEVEL SECURITY; USING vs WITH CHECK",
+    "url": "https://www.postgresql.org/docs/current/ddl-rowsecurity.html",
+    "version": "16"
+  },
+  {
+    "id": "postgresql/create-function-security",
+    "sha256": "",
+    "text": "SECURITY DEFINER functions execute with the privileges of the function owner, not the caller. Set a safe search_path and grant narrowly; they are the controlled escape hatch for RLS-bypassing reads.",
+    "title": "CREATE FUNCTION SECURITY DEFINER runs as the owner; pin search_path",
+    "url": "https://www.postgresql.org/docs/current/sql-createfunction.html",
+    "version": "16"
+  },
+  {
+    "id": "supabase/custom-access-token-hook",
+    "sha256": "",
+    "text": "A custom access token hook injects authorization claims (role, cohort) into the JWT from app_metadata, not user_metadata. Read auth/cohort data from auth.jwt() / app_metadata; user_metadata is user-editable and must never drive authz.",
+    "title": "Supabase custom access token hook: authz claims from app_metadata, never user_metadata",
+    "url": "https://supabase.com/docs/guides/auth/auth-hooks/custom-access-token-hook",
+    "version": "2026-06"
+  },
+  {
+    "id": "supabase/generating-types",
+    "sha256": "",
+    "text": "supabase gen types typescript generates TypeScript types from the database schema. Regenerate and commit after every migration; a CI drift check (gen vs committed) catches schema changes that were not reflected in the types.",
+    "title": "Supabase generated TypeScript types and drift checking",
+    "url": "https://supabase.com/docs/guides/api/rest/generating-types",
+    "version": "2026-06"
+  },
+  {
+    "id": "owasp/csv-injection",
+    "sha256": "",
+    "text": "Formula/CSV injection: a cell beginning with = + - @ or tab/CR can be executed as a formula by a spreadsheet program. Sanitize exported fields (prefix with a single quote or strip leading operators) before emitting CSV.",
+    "title": "OWASP CSV (formula) injection on data export",
+    "url": "https://owasp.org/www-community/attacks/CSV_Injection",
+    "version": "2026"
+  },
+  {
+    "id": "mozilla/wcag-color-contrast",
+    "sha256": "",
+    "text": "WCAG contrast: normal text needs a contrast ratio of at least 4.5:1 (AA) or 7:1 (AAA); large text and UI components need at least 3:1. Ratios are computed from sRGB relative luminance; 4.499:1 does not pass 4.5:1.",
+    "title": "WCAG colour contrast minimums (4.5:1 / 3:1 / 7:1)",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/Understanding_WCAG/Perceivable/Color_contrast",
+    "version": "WCAG2.2"
+  },
+  {
+    "id": "stripe/webhooks-verify",
+    "sha256": "",
+    "text": "Verify webhook signatures with the endpoint secret before trusting the event; reconstruct the signed payload and compare. Never resolve privileged state from an unverified webhook body. Use the raw request body for verification.",
+    "title": "Stripe webhook signature verification",
+    "url": "https://docs.stripe.com/webhooks",
+    "version": "2026"
+  },
+  {
+    "id": "supabase/functions-invoke-auth-forwarding",
+    "sha256": "",
+    "text": "supabase.functions.invoke() sends the caller's session access token automatically: the supabase-js client wraps fetch with fetchWithAuth, which sets Authorization: Bearer <access token> on every request (including Edge Function invocations) unless the header is already set. Verified in @supabase/supabase-js 2.108.2 dist (fetchWithAuth -> headers.set('Authorization', `Bearer ${accessToken}`)).",
+    "title": "supabase-js functions.invoke — automatic Authorization bearer forwarding",
+    "url": "https://supabase.com/docs/reference/javascript/functions-invoke",
+    "version": "supabase-js@2.108.2"
+  },
+  {
+    "id": "supabase/auth-mfa-listfactors",
+    "sha256": "",
+    "text": "supabase.auth.mfa.listFactors() returns { all, totp, phone }: `all` holds every enrolled factor for the user; the `totp` bucket contains only VERIFIED TOTP factors (factor_type totp AND status verified); `phone` likewise verified phone factors. The listing is served by GoTrue from the authenticated user's record (server-verified), not from client state.",
+    "title": "Supabase JS reference — auth.mfa.listFactors (verified-only totp bucket)",
+    "url": "https://supabase.com/docs/reference/javascript/auth-mfa-listfactors",
+    "version": "supabase-js@2.108.2"
+  },
+  {
+    "id": "zod/uuid",
+    "sha256": "",
+    "text": "Zod 4 API - ID formats: z.uuid() validates RFC 9562/4122 UUIDs (with version-pinning variants like z.uuid({ version: 'v4' }) / z.uuidv4()); distinct from the looser z.guid(). Documented under Ids on the API page (anchor #uuids).",
+    "title": "Zod 4 API - uuid validation (z.uuid)",
+    "url": "https://zod.dev/api?id=uuids",
+    "version": "zod@4"
+  },
+  {
+    "id": "rfc/9116-security-txt",
+    "sha256": "",
+    "text": "RFC 9116 (A File Format to Aid in Security Vulnerability Disclosure): the security.txt file MUST be served at /.well-known/security.txt over HTTPS (section 3, Location & retrieval); it MUST contain a Contact field and an Expires field (sections 2.5.3/2.5.5); a redirect to an unrelated resource (e.g. a login page) fails the retrieval requirement.",
+    "title": "RFC 9116: security.txt at /.well-known/security.txt with Contact + Expires",
+    "url": "https://www.rfc-editor.org/rfc/rfc9116",
+    "version": "rfc9116-2022"
+  },
+  {
+    "id": "postgres@17/on-conflict-privileges",
+    "sha256": "",
+    "text": "INSERT with ON CONFLICT DO UPDATE requires UPDATE privilege on the table (checked at plan time, even when no conflict fires); ON CONFLICT DO NOTHING needs only INSERT — the append-only shape for revoked-UPDATE tables.",
+    "title": "INSERT ... ON CONFLICT privilege requirements",
+    "url": "https://www.postgresql.org/docs/17/sql-insert.html#SQL-ON-CONFLICT",
+    "version": "17"
+  },
+  {
+    "id": "postgres@17/timestamptz-output",
+    "sha256": "",
+    "text": "Postgres ISO-style datetime output serializes timestamptz with a signed numeric UTC offset (e.g. +00:00), never the 'Z' suffix JS toISOString emits — stamp equality must compare instants, not strings.",
+    "title": "Postgres ISO datetime output format",
+    "url": "https://www.postgresql.org/docs/17/datatype-datetime.html#DATATYPE-DATETIME-OUTPUT",
+    "version": "17"
+  },
+  {
+    "id": "mdn/x-forwarded-for-spoofability",
+    "sha256": "",
+    "text": "On proxies that APPEND to X-Forwarded-For, the left-most hop is client-supplied and spoofable; only the last hop added by a trusted proxy is reliable for rate-limit keying.",
+    "title": "X-Forwarded-For spoofability caveat",
+    "url": "https://developer.mozilla.org/docs/Web/HTTP/Headers/X-Forwarded-For",
+    "version": "2026-07"
+  },
+  {
+    "id": "vercel/request-headers-x-real-ip",
+    "sha256": "",
+    "text": "On Vercel, x-real-ip and x-forwarded-for are both platform-sanitized to the real client IP (external hops stripped); x-real-ip is the guaranteed single-value form.",
+    "title": "Vercel request headers: x-real-ip / x-forwarded-for sanitization",
+    "url": "https://vercel.com/docs/headers/request-headers#x-real-ip",
+    "version": "2026-07"
+  },
+  {
+    "id": "owasp/api4-2023-unrestricted-resource-consumption",
+    "sha256": "",
+    "text": "API4:2023 — public endpoints that trigger billable third-party work (SMS, STT, tokens) must be rate-limited and duration/size-capped or they are a denial-of-wallet vector.",
+    "title": "OWASP API4:2023 Unrestricted Resource Consumption",
+    "url": "https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/",
+    "version": "2023"
+  },
+  {
+    "id": "zod@4/url-protocol-option",
+    "sha256": "",
+    "text": "z.url() validates protocol ONLY when the protocol option is passed (z.url({ protocol: /^https?$/ })); bare z.url() accepts any scheme, javascript: included.",
+    "title": "Zod URL validation protocol option",
+    "url": "https://zod.dev/api?id=urls",
+    "version": "4"
+  },
+  {
+    "id": "supabase/database-advisors-lints",
+    "sha256": "",
+    "text": "Supabase database advisors: lint 0001_unindexed_foreign_keys flags FK columns without a covering index; policy-predicate FK columns should be indexed.",
+    "title": "Supabase database advisors (0001 unindexed foreign keys)",
+    "url": "https://supabase.com/docs/guides/database/database-advisors",
+    "version": "2026-07"
+  },
+  {
+    "id": "wai-aria-apg/grid-pattern",
+    "sha256": "",
+    "text": "APG Grid pattern: interactive composite rows need role=grid/row/gridcell with roving tabindex and aria-selected; a bare focusable div exposes no role or selection state to AT.",
+    "title": "WAI-ARIA APG Grid (composite rows)",
+    "url": "https://www.w3.org/WAI/ARIA/apg/patterns/grid/",
+    "version": "2026-07"
+  },
+  {
+    "id": "wcag22/3-3-2-labels-or-instructions",
+    "sha256": "",
+    "text": "WCAG 2.2 SC 3.3.2 Labels or Instructions: required-field status must be stated at the field (label/instruction), not only implied by a disabled control.",
+    "title": "WCAG 2.2 SC 3.3.2 Labels or Instructions",
+    "url": "https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html",
+    "version": "2.2"
+  },
+  {
+    "id": "harness/doctrine",
+    "sha256": "",
+    "text": "Deterministic hooks are the enforcement layer; the Stop gate defines done; provenance is verified against a pinned corpus; the gate config is harness-protected and mirrored in CI.",
+    "title": "Agent-harness doctrine",
+    "url": "docs/harness/README.md",
+    "version": "v0"
+  }
+]

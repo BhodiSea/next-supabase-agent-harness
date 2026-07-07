@@ -1,0 +1,109 @@
+# SLSA Build L2 provenance + SBOM for released artifacts. GitHub OIDC only.
+#
+# Honest limit (SOURCE: docs/harness/README.md (SLSA L2 honest limit)): a valid attestation
+# proves BUILD-PATH integrity, not SOURCE integrity — cf. the May 2026 "Mini Shai-Hulud"
+# incident where a stolen OIDC token produced cryptographically valid attestations. For
+# Build L3, move the build into an isolated reusable workflow (slsa-github-generator) and
+# pin every action by commit SHA.
+# Vercel runs its own build pipeline; this attests the GitHub-built artifact.
+# SOURCE: docs/harness/README.md (actions/attest-build-provenance = SLSA L2; SBOM via syft)
+name: provenance
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # GitHub OIDC -> Fulcio short-lived signing cert (Sigstore, logged to Rekor)
+  attestations: write
+
+concurrency:
+  group: provenance-${{ github.ref }}
+  # Never cancel a release attestation mid-flight; queue instead.
+  cancel-in-progress: false
+
+jobs:
+  attest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden runner (egress audit)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        # Release secrets supply build-time public env; configure them on the protected tag env.
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+        run: pnpm build
+
+      - name: Package build artifact
+        id: pack
+        run: |
+          mkdir -p dist
+          tar -czf dist/app-build.tar.gz .next package.json pnpm-lock.yaml
+          echo "artifact=dist/app-build.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - name: Attest build provenance (SLSA Build L2)
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: ${{ steps.pack.outputs.artifact }}
+
+      - name: Generate SBOM (SPDX)
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          format: spdx-json
+          output-file: dist/sbom.spdx.json
+
+      - name: Attest SBOM
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: ${{ steps.pack.outputs.artifact }}
+          sbom-path: dist/sbom.spdx.json
+
+      - name: Upload artifact + SBOM
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: build-provenance
+          path: |
+            dist/app-build.tar.gz
+            dist/sbom.spdx.json
+
+      # Prove the attestation is verifiable IN CI (not just locally) — the release gates on it. The
+      # attestation can lag a few seconds after attest-*, so retry briefly; the final attempt's exit
+      # code is the gate. SOURCE: docs/harness/README.md (verify the attestation, don't just produce it)
+      - name: Verify build-provenance attestation (in-CI gate)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if gh attestation verify dist/app-build.tar.gz -R "$GITHUB_REPOSITORY"; then
+              echo "build-provenance attestation verified"
+              exit 0
+            fi
+            echo "attestation not yet queryable (attempt $attempt/5) — retrying in 10s"
+            sleep 10
+          done
+          echo "::error::build-provenance attestation failed to verify after retries"
+          exit 1
+
+# Verify locally with the GitHub CLI:
+#   gh attestation verify dist/app-build.tar.gz -R <org>/<repo>
+#   gh attestation verify dist/app-build.tar.gz -R <org>/<repo> \
+#     --predicate-type https://spdx.dev/Document/v2.3

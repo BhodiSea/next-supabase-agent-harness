@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "corpus_search": {
+      "args": ["./tools/mcp/corpus-search-server.mjs"],
+      "command": "node",
+      "env": { "CORPUS_INDEX_URL": "${CORPUS_INDEX_URL}" },
+      "type": "stdio"
+    },
+    "rls_verify": {
+      "args": ["./tools/mcp/rls-verify-server.mjs"],
+      "command": "node",
+      "env": { "SUPABASE_DB_URL": "${SUPABASE_DB_URL}" },
+      "type": "stdio"
+    },
+    "supabase": {
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase",
+        "--read-only",
+        "--project-ref",
+        "${SUPABASE_PROJECT_REF}"
+      ],
+      "command": "npx",
+      "env": { "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}" },
+      "type": "stdio"
+    }
+  }
+}

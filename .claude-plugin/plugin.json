@@ -1,0 +1,11 @@
+{
+  "name": "next-supabase-agent-harness",
+  "description": "Subagents, commands, and the vertical-slice skill from the next-supabase-agent-harness. The deterministic layer (hooks, gates, permissions, CI) cannot ship in a plugin — install it with: npx --yes github:BhodiSea/next-supabase-agent-harness init",
+  "version": "0.1.0",
+  "author": {
+    "name": "Cogvera Labs"
+  },
+  "agents": "./template/base/.claude/agents",
+  "commands": "./template/base/.claude/commands",
+  "skills": "./template/base/.claude/skills"
+}

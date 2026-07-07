@@ -1,0 +1,51 @@
+# OWASP ZAP baseline DAST against a deployed staging target. Manual dispatch + weekly. Self-skips
+# when the STAGING_URL secret is unset — DAST cannot run without a deployed target, so this is inert
+# until one exists. SOURCE: docs/harness/README.md (DAST: OWASP ZAP baseline on staging)
+name: zap-baseline
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, Monday 04:00 UTC.
+    - cron: "0 4 * * 1"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: zap-baseline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zap:
+    name: zap baseline (DAST)
+    runs-on: ubuntu-latest
+    env:
+      STAGING_URL: ${{ secrets.STAGING_URL }}
+    steps:
+      - name: Harden runner (egress audit)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Guard — require a deployed staging target
+        id: guard
+        run: |
+          if [ -z "$STAGING_URL" ]; then
+            echo "STAGING_URL secret not set — skipping DAST (no deployed target)."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: ZAP baseline scan
+        if: steps.guard.outputs.skip != 'true'
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          target: ${{ env.STAGING_URL }}
+          # -a includes alpha passive rules; baseline is passive-only (safe against staging).
+          cmd_options: "-a"

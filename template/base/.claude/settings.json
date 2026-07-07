@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "enabledMcpjsonServers": ["corpus_search", "rls_verify"],
+  "env": {
+    "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP": "8"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/posttool-fast-check.mjs",
+            "timeout": 60,
+            "type": "command"
+          },
+          {
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/posttool-source-check.mjs",
+            "timeout": 30,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pretool-bash-guard.mjs",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pretool-write-guard.mjs",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/stop-validate-gate.mjs",
+            "timeout": 600,
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(pnpm validate)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm lint:fix)",
+      "Bash(pnpm knip)",
+      "Bash(pnpm arch)",
+      "Bash(pnpm build)",
+      "Bash(pnpm check)",
+      "Bash(pnpm format)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm vitest *)",
+      "Bash(pnpm exec vitest*)",
+      "Bash(pnpm playwright test*)",
+      "Bash(pnpm exec playwright*)",
+      "Bash(pnpm stryker run*)",
+      "Bash(pnpm test:rls*)",
+      "Bash(pnpm exec biome:*)",
+      "Bash(pnpm exec tsc:*)",
+      "Bash(supabase:*)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__get_advisors",
+      "mcp__supabase__get_logs",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__apply_migration",
+      "mcp__supabase__generate_typescript_types",
+      "mcp__supabase__search_docs",
+      "mcp__corpus_search__corpus_search",
+      "mcp__corpus_search__corpus_resolve",
+      "mcp__rls_verify__rls_verify",
+      "WebFetch(domain:code.claude.com)",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:nextjs.org)",
+      "WebFetch(domain:react.dev)",
+      "WebFetch(domain:developer.mozilla.org)",
+      "WebFetch(domain:vercel.com)"
+    ],
+    "ask": ["Bash(git push:*)"],
+    "defaultMode": "acceptEdits",
+    "deny": [
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(rm -rf:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(* service_role *)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./**/.env)",
+      "Read(./**/.env.*)",
+      "Read(~/.ssh/**)",
+      "Edit(./.claude/hooks/**)",
+      "Write(./.claude/hooks/**)",
+      "Edit(./.claude/settings.json)",
+      "Write(./.claude/settings.json)",
+      "Edit(./.harness/**)",
+      "Write(./.harness/**)"
+    ],
+    "disableBypassPermissionsMode": "disable"
+  },
+  "statusLine": {
+    "command": "$CLAUDE_PROJECT_DIR/.claude/statusline.mjs",
+    "type": "command"
+  }
+}
