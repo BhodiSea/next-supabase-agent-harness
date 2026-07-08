@@ -24,6 +24,8 @@ jobs:
         with:
           egress-policy: audit
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22
@@ -38,6 +40,8 @@ jobs:
         with:
           egress-policy: audit
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22
@@ -58,6 +62,8 @@ jobs:
         with:
           egress-policy: audit
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: ${{ matrix.node }}
@@ -98,6 +104,8 @@ jobs:
         with:
           egress-policy: audit
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22
@@ -141,6 +149,8 @@ jobs:
         with:
           egress-policy: audit
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22
@@ -171,10 +181,17 @@ jobs:
           export NEXT_PUBLIC_SUPABASE_URL="$API_URL"
           export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$ANON_KEY"
           export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          # Positive proof it ran for real (not the pre-schema self-skip): with migrations +
+          # a reachable stack the runner takes the pgTAP branch ('running pgTAP checks') and
+          # ends '[rls] OK' only if the SDK isolation suite also passed. Assert both.
           pnpm test:rls 2>&1 | tee rls.log
-          if grep -qi 'skip' rls.log && ! grep -qi 'isolation' rls.log; then
-            echo 'RLS suite silently skipped with a live stack' >&2; exit 1
-          fi
+          grep -q 'running pgTAP checks' rls.log \
+            || { echo 'RLS suite self-skipped instead of running against the live stack' >&2; exit 1; }
+          grep -q '\[rls\] OK' rls.log \
+            || { echo 'RLS suite did not complete green' >&2; exit 1; }
+      - name: Types-drift gate the installed project's CI runs
+        working-directory: ${{ runner.temp }}/rt
+        run: pnpm check:types:drift
       - name: Migration apply-integrity
         working-directory: ${{ runner.temp }}/rt
         run: pnpm test:migrations

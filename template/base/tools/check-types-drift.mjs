@@ -32,7 +32,7 @@ if (!available('supabase --version') || !available('supabase status')) {
 
 let generated
 try {
-  generated = execSync('supabase gen types typescript --local', {
+  generated = execSync('supabase gen types typescript --local --schema public', {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   })

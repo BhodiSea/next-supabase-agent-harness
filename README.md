@@ -34,7 +34,7 @@ Prompts are advisory; these are not.
 |---|---|---|
 | **Agent-time hooks** | every tool call / turn end | `pretool-bash-guard` (blocks `rm -rf`, force-push, `.env` reads, service-role refs), `pretool-write-guard` (blocks service-role/`dangerouslySetInnerHTML`/server `getSession()`/client→DAL imports; protects the gate's own config), `posttool-source-check` (every decision site needs `// SOURCE:`), and the **Stop validate-gate**: exit 2 until `pnpm validate` + RLS suite + unit tests are green — the turn cannot end on a red build. |
 | **Commit-time** | lefthook | prettier/biome on staged files, gitleaks secret scan, commitlint; typecheck + eslint + knip + cspell on pre-push. |
-| **CI** | every PR | The identical gate chain via `tools/validate.mjs --min-floor` (a locally-weakened config cannot weaken CI), plus CodeQL, gitleaks full-history, osv-scanner, actionlint + zizmor — all actions SHA-pinned, Renovate-maintained, harden-runner on every job. |
+| **CI** | every PR | The identical gate chain via `tools/validate.mjs --min-floor` (a locally-weakened config cannot weaken CI), plus CodeQL, gitleaks full-history, osv-scanner, actionlint + zizmor — all actions SHA-pinned (including the osv reusable workflows, pinned by commit SHA), Renovate-maintained, harden-runner on every job that can host it (the semgrep container job and the osv reusable-workflow calls cannot). |
 
 ## The gate chain
 
@@ -96,12 +96,13 @@ and review are the backstops. Threat model:
 
 ## What an install gives you
 
-112 files: the `.claude/` machinery (settings + 5 hooks + 7 agents + 3 commands + rules + the
+117 files: the `.claude/` machinery (settings + 5 hooks + 7 agents + 3 commands + rules + the
 vertical-slice skill), the gate configs (biome, eslint layer, knip, dependency-cruiser, tsconfig,
 prettier, lefthook, commitlint, gitleaks, cspell, pnpm 11 supply-chain settings), `tools/`
 (validate runner, gate scripts, two MCP servers, corpus seed), test harnesses (Vitest, RLS
-isolation, migration integrity, Playwright + axe WCAG 2.2 AA), 7 SHA-pinned CI workflows +
-Renovate, governance docs (ADR/spec templates, approved-tools registry), and — on bootstrap — a
+isolation, migration integrity, Playwright + axe WCAG 2.2 AA), 5 default CI workflows (plus
+opt-in module workflows) + Renovate, governance docs (ADR/spec templates, approved-tools
+registry), and — on bootstrap — a
 minimal `notes` app (login → protected page → server-only DAL → RLS'd table with pgTAP tests)
 whose every auth/RLS decision site carries a resolving citation.
 
@@ -112,9 +113,11 @@ stack) → unit tests.
 ## Retrofit semantics
 
 Existing projects are never clobbered: existing scripts keep their names (ours land under
-`harness:<name>`, and the Stop hook rebinds itself), existing configs stay (ours land alongside
-as `<name>.harness.<ext>` with a conflict report), app code is untouched, and stack files are
-additive-only. `src/` layouts are rejected in v1 (every gate assumes root-level `app/ lib/`).
+`harness:<name>`), existing configs stay (ours land alongside as `<name>.harness.<ext>` with a
+conflict report), app code is untouched, and stack files are additive-only. The Stop gate is
+unaffected by a script-name collision — it invokes the runners directly (`node tools/validate.mjs`,
+etc.), not a package.json script. `src/` layouts are rejected in v1 (every gate assumes root-level
+`app/ lib/`).
 
 ## Requirements
 

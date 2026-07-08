@@ -1,0 +1,12 @@
+# zizmor config for THIS repo's own workflows (the template ships its own under
+# template/base/github/zizmor.yml). See CONTRIBUTING.md.
+rules:
+  cache-poisoning:
+    # selftest/hygiene/release are tag-triggered (release acceptance runs on v* tags), which
+    # puts zizmor's cache-poisoning heuristic on alert for every actions/setup-node. None of
+    # these configure a dependency cache (they use corepack + a fresh pnpm install), so there
+    # is no cache to poison. Suppress the heuristic for these files.
+    ignore:
+      - selftest.yml
+      - hygiene.yml
+      - release.yml

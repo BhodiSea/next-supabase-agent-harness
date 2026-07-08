@@ -1,6 +1,3 @@
-// Generated-types shape for the starter `notes` table. Regenerate against your live schema with
-// `pnpm gen:types` (supabase gen types typescript --local > lib/supabase/database.types.ts).
-// SOURCE: https://supabase.com/docs/guides/api/rest/generating-types [corpus: supabase/generating-types]
 export type Json =
   | string
   | number
@@ -171,3 +168,10 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
+

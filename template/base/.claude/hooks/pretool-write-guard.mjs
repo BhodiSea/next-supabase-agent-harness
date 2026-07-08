@@ -14,18 +14,42 @@ const input = await readHookInput()
 const ti = input?.tool_input ?? {}
 const path = String(ti.file_path ?? ti.path ?? '')
 
+// Resolve to a path RELATIVE to the project root so the protected patterns can be
+// root-anchored (^…) — otherwise a nested node_modules/x/tools/validate.mjs would
+// false-match. CLAUDE_PROJECT_DIR is guaranteed for hook subprocesses.
+const projectDir = process.env.CLAUDE_PROJECT_DIR ?? ''
+const rel =
+  projectDir && path.startsWith(projectDir)
+    ? path.slice(projectDir.length).replace(/^\/+/, '')
+    : path.replace(/^\.?\/+/, '')
+
 // Tamper evidence (layer 2): the gate must not be able to rewrite itself. Edits to the
-// harness config, the validate/check scripts, git hooks, and CI workflows require an
-// explicit human-in-the-loop escape hatch. Layer 1 is the settings.json deny list.
+// harness config, the validate/check scripts, the whole lint/architecture config surface,
+// the RLS runner, the git hooks, and CI workflows require an explicit human-in-the-loop
+// escape hatch. Layer 1 is the settings.json deny list (hooks + settings + .harness).
 // SOURCE: docs/harness/README.md (tamper evidence)
 const PROTECTED = [
-  /(^|\/)tools\/harness\.config\.mjs$/,
-  /(^|\/)tools\/validate\.mjs$/,
-  /(^|\/)tools\/check-[^/]+\.mjs$/,
-  /(^|\/)lefthook\.yml$/,
-  /(^|\/)\.github\/workflows\//,
+  /^tools\/harness\.config\.mjs$/,
+  /^tools\/validate\.mjs$/,
+  /^tools\/check-[^/]+\.mjs$/,
+  /^tests\/rls\/run-rls\.mjs$/, // the RLS runner the Stop hook invokes directly (test bodies stay editable)
+  /^lefthook\.yml$/,
+  /^\.github\/workflows\//,
+  // The lint/architecture config surface — weakening any of these weakens the gate.
+  /^eslint\.config\.mjs$/,
+  /^eslint\//,
+  /^biome\.jsonc$/,
+  /^knip\.json$/,
+  /^\.dependency-cruiser\.js$/,
+  /^tsconfig\.json$/,
+  /^pnpm-workspace\.yaml$/,
+  // Permission + MCP surface: never let the agent widen its own grants or add MCP servers.
+  /^\.claude\/settings\.json$/,
+  /^\.claude\/settings\.local\.json$/,
+  /^\.mcp\.json$/,
+  /^\.harness\//,
 ]
-if (process.env.HARNESS_ALLOW_SELF_EDIT !== '1' && PROTECTED.some((re) => re.test(path))) {
+if (process.env.HARNESS_ALLOW_SELF_EDIT !== '1' && PROTECTED.some((re) => re.test(rel))) {
   denyTool(
     'PreToolUse',
     'harness-protected file: set HARNESS_ALLOW_SELF_EDIT=1 (human-in-the-loop) to modify the gate itself. SOURCE: docs/harness/README.md (tamper evidence)',

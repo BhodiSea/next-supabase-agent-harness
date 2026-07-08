@@ -36,9 +36,10 @@ export async function init(opts) {
 
   const report = { title: `harness init (${det.mode})`, written: [], skipped: [], conflicts: [], drift: [], notes: [] }
   const files = {}
-  let validateName = 'validate'
 
-  // package.json first (merge decides whether the gate lives at harness:validate).
+  // package.json first: on retrofit we merge without clobbering (a colliding "validate"
+  // stays the project's; ours lands at harness:validate). The Stop hook is unaffected —
+  // it invokes `node tools/validate.mjs` directly, not the package.json script name.
   const pkgEntry = plan.find((e) => e.installPath === 'package.json')
   const rest = plan.filter((e) => e.installPath !== 'package.json' && !e.installPath.startsWith('.harness/'))
 
@@ -46,8 +47,7 @@ export async function init(opts) {
     const incoming = JSON.parse(pkgEntry.content)
     if (det.mode === 'retrofit') {
       const existing = JSON.parse(readFileSync(join(targetDir, 'package.json'), 'utf8'))
-      const { merged, report: mergeReport, validateName: vn } = mergePackageJson(existing, incoming)
-      validateName = vn
+      const { merged, report: mergeReport } = mergePackageJson(existing, incoming)
       pkgEntry.content = `${JSON.stringify(merged, null, 2)}\n`
       for (const r of mergeReport) {
         if (r.kind === 'script-conflict')
@@ -83,10 +83,6 @@ export async function init(opts) {
         report.written.push(sibling)
         continue
       }
-    }
-
-    if (validateName === 'harness:validate' && ip === 'tools/harness.config.mjs') {
-      entry.content = entry.content.replaceAll("'pnpm validate'", "'pnpm harness:validate'")
     }
 
     if (opts.dryRun) {

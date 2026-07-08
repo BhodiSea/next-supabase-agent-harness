@@ -25,7 +25,9 @@ const RULES = [
   ],
   [/\bservice_role\b/, "Blocked: 'service_role' reference detected — RLS bypass is forbidden."],
   [
-    /\b(cat|less|more|head|tail|grep|nano|vim|code|xxd|strings)\s+[^|;&]*\.env(\.|\b)/,
+    // Real secret files only — .env, .env.local, .env.production … but NOT the committed,
+    // secret-free .env.example / .env.sample / .env.template that document required vars.
+    /\b(cat|less|more|head|tail|grep|nano|vim|code|xxd|strings)\s+[^|;&]*\.env(?!\.(example|sample|template)\b)(\.|\b)/,
     'Blocked: reading .env files is forbidden; secrets are injected at runtime.',
   ],
   [

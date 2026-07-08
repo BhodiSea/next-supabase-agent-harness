@@ -38,7 +38,9 @@ try {
 const failures = []
 for (const [name, cmd] of STEPS) {
   try {
-    execSync(cmd, { env: process.env, stdio: 'pipe' })
+    // 64 MB: `next build` route tables + `supabase db reset` docker output can exceed the
+    // 1 MB default and make execSync throw ENOBUFS on an otherwise-green step (false FAIL).
+    execSync(cmd, { env: process.env, maxBuffer: 64 * 1024 * 1024, stdio: 'pipe' })
   } catch (e) {
     const out = (e.stdout?.toString() ?? '') + (e.stderr?.toString() ?? '')
     failures.push(`### ${name} FAILED (${cmd})\n${out.slice(-4000)}`)

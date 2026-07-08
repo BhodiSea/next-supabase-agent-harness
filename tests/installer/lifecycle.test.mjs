@@ -94,8 +94,10 @@ test('retrofit merges package.json, never clobbers configs, skips app code', () 
   )
   assert.ok(!existsSync(join(dir, 'supabase/migrations/20260707000000_notes.sql')), 'stack migration not installed on retrofit')
   assert.ok(existsSync(join(dir, 'proxy.ts')), 'additive stack seed installed when absent')
+  // The Stop gate invokes the runner directly (tamper-evidence), so a colliding package.json
+  // "validate" script cannot hollow it out — no rebinding needed.
   const cfg = readFileSync(join(dir, 'tools/harness.config.mjs'), 'utf8')
-  assert.ok(cfg.includes('pnpm harness:validate'), 'stop hook rebound to harness:validate')
+  assert.ok(cfg.includes('node tools/validate.mjs'), 'stop gate invokes the runner directly')
 })
 
 test('retrofit rejects src/ layouts with a clear message', () => {
