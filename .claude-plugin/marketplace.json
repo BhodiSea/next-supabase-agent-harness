@@ -1,5 +1,8 @@
 {
   "name": "next-supabase-agent-harness",
+  "metadata": {
+    "description": "Agent-side companion to the next-supabase-agent-harness: subagents, commands, and the vertical-slice skill for Next.js + Supabase RLS projects."
+  },
   "owner": {
     "name": "BhodiSea"
   },
